@@ -9,5 +9,6 @@ const userController = new UserController();
 
 userRouter.post("/register",validate(userRegisterSchema),userController.registerUser);
 userRouter.post("/signin",validate(userSignInSchema),userController.signInUser);
+userRouter.post("/verify",userController.verifyEmail);
 
 export default userRouter;

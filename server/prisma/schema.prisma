@@ -24,5 +24,18 @@ model User {
   fullName String
   avatarUrl String?
   role Role @default(USER)
+  isVerified Boolean @default(false)
   createdAt DateTime @default(now())
+
+  otps Otp[]
+}
+
+model Otp {
+  id String @id @default(uuid())
+  code String
+  userId String
+  expiresAt DateTime
+
+  user User @relation(fields: [userId],references: [id],onDelete: Cascade)
+  @@unique([code,userId])
 }

@@ -6,7 +6,7 @@ export class UserController  {
   private userService = new UserService();
   registerUser = async (req: Request, res: Response): Promise<void | Response> => {
     try {
-      const user = await this.userService.registerUser((req as any).validated.body);
+      const user = await this.userService.registerUser((req as any).validated);
       res.status(201).json(user);
     } catch (error) {
       console.error("Error registering user:", error instanceof Error ? error.message : "Unknown error");
@@ -19,7 +19,7 @@ export class UserController  {
   signInUser = async (req:Request,res:Response):Promise<void | Response> => {
     
     try {
-      const accessToken = await this.userService.signInUser((req as any).validated.body);
+      const accessToken = await this.userService.signInUser((req as any).validated);
       res.cookie("accessToken",accessToken,{
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -29,6 +29,19 @@ export class UserController  {
       res.status(200).json({message:"User signed in successfully"})
     } catch (error) {
       console.error("Login error: ",error instanceof Error ? error.message : error);
+      return res.status(500).json({
+        message: error instanceof Error ? error.message : "Internal Server Error"
+      })
+    }
+  }
+
+  verifyEmail = async (req:Request,res:Response):Promise<void|Response> => {
+    try {
+      const {email,otp} = req.body;
+       await this.userService.verifyEmail(email,otp);
+      res.status(200).json({message:"Email verified successfully"})
+    } catch (error) {
+      console.error("Email verification error: ",error instanceof Error ? error.message : error);
       return res.status(500).json({
         message: error instanceof Error ? error.message : "Internal Server Error"
       })
