@@ -47,4 +47,15 @@ export class UserController  {
       })
     }
   }
+  logOut = async (_:Request,res:Response):Promise<void|Response> => {
+    try {
+      res.clearCookie("accessToken");
+      res.status(200).json({message:"User logged out successfully"})
+    } catch (error) {
+      console.error("Logout error: ",error instanceof Error ? error.message : error);
+      return res.status(500).json({
+        message: error instanceof Error ? error.message : "Internal Server Error"
+      })
+    }
+  }
 }
