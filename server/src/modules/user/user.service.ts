@@ -1,4 +1,3 @@
-import { email } from "zod";
 import type { User } from "../../generated/prisma/client.js";
 import { prisma } from "../../lib/prisma.js";
 import type { UserRegisterInput, UserSignInInput } from "./user.schema.js";
@@ -8,7 +7,7 @@ import { transporter } from "../../lib/utils/otp.js";
 
 export class UserService {
   private prisma = prisma;
-  async registerUser(data: UserRegisterInput): Promise<User> {
+  async registerUser(data: UserRegisterInput): Promise<Omit<User, "password">> {
     const otp = Math.floor(100000 + Math.random() * 900000);
     const hashedOtp = await bcrypt.hash(otp.toString(), 10);
     const hashedPassword = await bcrypt.hash(data.password, 10);
@@ -27,7 +26,7 @@ export class UserService {
         }
       }
     })
-     transporter.sendMail({
+    transporter.sendMail({
       from: process.env.GOOGLE_APP_EMAIL!,
       to: data.email,
       subject: "Email Verification OTP",
@@ -37,8 +36,8 @@ export class UserService {
         console.error("Error sending email:", error);
       }
     });
-
-    return user;
+    const { password, ...userWithoutPassword } = user;
+    return userWithoutPassword;
   }
 
   async signInUser(data: UserSignInInput): Promise<{ accessToken: string }> {
@@ -85,6 +84,14 @@ export class UserService {
     });
     await this.prisma.otp.delete({ where: { id: Otp.id } });
 
-    
+
+  }
+  async getUserById(id: string): Promise<Omit<User, "password"> | null> {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      throw new Error("User not found")
+    }
+    const { password, ...userWithoutPassword } = user;
+    return userWithoutPassword;
   }
 }

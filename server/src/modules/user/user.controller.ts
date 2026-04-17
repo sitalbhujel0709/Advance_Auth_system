@@ -19,7 +19,8 @@ export class UserController  {
   signInUser = async (req:Request,res:Response):Promise<void | Response> => {
     
     try {
-      const accessToken = await this.userService.signInUser((req as any).validated);
+      const {accessToken} = await this.userService.signInUser((req as any).validated);
+      console.log("Generated access token:",accessToken)
       res.cookie("accessToken",accessToken,{
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -53,6 +54,19 @@ export class UserController  {
       res.status(200).json({message:"User logged out successfully"})
     } catch (error) {
       console.error("Logout error: ",error instanceof Error ? error.message : error);
+      return res.status(500).json({
+        message: error instanceof Error ? error.message : "Internal Server Error"
+      })
+    }
+  }
+  getUserProfile = async (req:Request,res:Response):Promise<void | Response> => {
+    const userId = (req as any).user.userId;
+    console.log("Fetching profile for userId: ",userId);
+    try {
+      const user = await this.userService.getUserById(userId);
+      res.status(200).json(user);
+    } catch (error) {
+      console.error("Error fetching user profile: ",error instanceof Error ? error.message : error);
       return res.status(500).json({
         message: error instanceof Error ? error.message : "Internal Server Error"
       })
