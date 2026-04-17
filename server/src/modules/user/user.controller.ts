@@ -19,7 +19,7 @@ export class UserController  {
   signInUser = async (req:Request,res:Response):Promise<void | Response> => {
     
     try {
-      const {accessToken} = await this.userService.signInUser((req as any).validated);
+      const {accessToken,refreshToken} = await this.userService.signInUser((req as any).validated);
       console.log("Generated access token:",accessToken)
       res.cookie("accessToken",accessToken,{
         httpOnly: true,
@@ -27,6 +27,13 @@ export class UserController  {
         sameSite: "strict",
         maxAge: 60 * 60 * 1000
       })
+      res.cookie("refreshToken",refreshToken,{
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 7 * 24 * 60 * 60 * 1000
+      })
+
       res.status(200).json({message:"User signed in successfully"})
     } catch (error) {
       console.error("Login error: ",error instanceof Error ? error.message : error);
@@ -48,9 +55,16 @@ export class UserController  {
       })
     }
   }
-  logOut = async (_:Request,res:Response):Promise<void|Response> => {
+  logOut = async (req:Request,res:Response):Promise<void|Response> => {
+    const userId = (req as any).user.userId;
+    const refreshToken = req.cookies.refreshToken;
+    if(!refreshToken){
+      return res.status(400).json({error: "Refresh token is required for logout"})
+    }
     try {
+      await this.userService.logout(userId,refreshToken)
       res.clearCookie("accessToken");
+      res.clearCookie("refreshToken");
       res.status(200).json({message:"User logged out successfully"})
     } catch (error) {
       console.error("Logout error: ",error instanceof Error ? error.message : error);
@@ -69,6 +83,34 @@ export class UserController  {
       console.error("Error fetching user profile: ",error instanceof Error ? error.message : error);
       return res.status(500).json({
         message: error instanceof Error ? error.message : "Internal Server Error"
+      })
+    }
+  }
+
+  refreshAccessToken = async (req:Request,res:Response):Promise<void | Response> => {
+    const refreshToken = req.cookies.refreshToken;
+    if(!refreshToken){
+      return res.status(400).json({error: "Refresh token is required"})
+    }
+    try {
+      const {accessToken,newRefreshToken} = await this.userService.refreshRefreshToken(refreshToken);
+      res.cookie("accessToken",accessToken,{
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 60 * 60 * 1000
+      })
+      res.cookie("refreshToken",newRefreshToken,{
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 7 * 24 * 60 * 60 * 1000
+      })
+      res.status(200).json({message:"Access token refreshed successfully"})
+    } catch (error) {
+      console.error("Error refreshing access token: ",error instanceof Error ? error.message : error);
+      return res.status(401).json({
+        message: error instanceof Error ? error.message : "Unauthorized"
       })
     }
   }

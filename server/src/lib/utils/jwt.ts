@@ -11,8 +11,8 @@ export const generateAccessToken = ({userId,role}:AccessTokenInput):string=>{
   return token
 }
 
-export const generateRefreshToken = (userId:string):string => {
+export const generateRefreshToken = ({userId,role}:AccessTokenInput):string => {
   const secretkey = process.env.REFRESH_SECRET_KEY!
-  const token = jwt.sign({userId},secretkey,{expiresIn:"7d"})
+  const token = jwt.sign({userId,role},secretkey,{expiresIn:"7d"})
   return token
 }

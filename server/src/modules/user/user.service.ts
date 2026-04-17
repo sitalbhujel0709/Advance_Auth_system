@@ -2,7 +2,8 @@ import type { User } from "../../generated/prisma/client.js";
 import { prisma } from "../../lib/prisma.js";
 import type { UserRegisterInput, UserSignInInput } from "./user.schema.js";
 import bcrypt from 'bcrypt';
-import { generateAccessToken } from "../../lib/utils/jwt.js";
+import { generateAccessToken, generateRefreshToken } from "../../lib/utils/jwt.js";
+import jwt from "jsonwebtoken";
 import { transporter } from "../../lib/utils/otp.js";
 
 export class UserService {
@@ -40,7 +41,7 @@ export class UserService {
     return userWithoutPassword;
   }
 
-  async signInUser(data: UserSignInInput): Promise<{ accessToken: string }> {
+  async signInUser(data: UserSignInInput): Promise<{ accessToken: string; refreshToken: string }> {
     const existingUser = await this.prisma.user.findUnique({
       where: {
         email: data.email
@@ -49,13 +50,22 @@ export class UserService {
     if (!existingUser) {
       throw new Error("User with is email doesnot exists")
     }
-    const validatePassword = await bcrypt.compare(data.password, existingUser.password)
+    const validatePassword = await bcrypt.compare(data.password, existingUser.password!)
     if (!validatePassword) {
       throw new Error("Invalid credentials")
     }
     const accessToken = generateAccessToken({ userId: existingUser.id, role: existingUser.role });
+    const refreshToken = generateRefreshToken({ userId: existingUser.id, role: existingUser.role });
 
-    return { accessToken }
+    await this.prisma.session.create({
+      data: {
+        userId: existingUser.id,
+        refreshToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Refresh token expires in 7 days
+      }
+    })
+
+    return { accessToken,refreshToken }
   }
 
   async verifyEmail(email: string, otp: string): Promise<void> {
@@ -86,6 +96,14 @@ export class UserService {
 
 
   }
+  async logout(userId:string,refreshToken:string):Promise<void>{
+    await this.prisma.session.deleteMany({
+      where: {
+        userId,
+        refreshToken
+      }
+    })
+  }
   async getUserById(id: string): Promise<Omit<User, "password"> | null> {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) {
@@ -93,5 +111,39 @@ export class UserService {
     }
     const { password, ...userWithoutPassword } = user;
     return userWithoutPassword;
+  }
+
+  async refreshRefreshToken(refreshToken:string):Promise<{accessToken:string,newRefreshToken:string}>{
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_SECRET_KEY!);
+    const session = await this.prisma.session.findFirst({
+      where:{
+        refreshToken,
+        userId: (decoded as any).userId,
+        expiresAt: {
+          gt: new Date()
+        }
+      }
+    })
+    if(!session){
+      throw new Error("Invalid refresh token")
+    }
+    const accessToken = generateAccessToken({userId: session.userId,role: (decoded as any).role});
+    const newRefreshToken = generateRefreshToken({userId: session.userId,role: (decoded as any).role});
+
+    await this.prisma.session.delete({
+      where: {
+        id: session.id
+      }
+    })
+
+    await this.prisma.session.create({
+      data: {
+        userId: session.userId,
+        refreshToken: newRefreshToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      }
+    })
+    
+    return {accessToken,newRefreshToken}
   }
 }

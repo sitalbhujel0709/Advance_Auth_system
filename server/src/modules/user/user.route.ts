@@ -12,6 +12,7 @@ userRouter.post("/register",validate(userRegisterSchema),userController.register
 userRouter.post("/signin",validate(userSignInSchema),userController.signInUser);
 userRouter.post("/verify",userController.verifyEmail);
 userRouter.post("/logout",requireAuth,userController.logOut)
+userRouter.get("/refresh",userController.refreshAccessToken)
 userRouter.get("/profile",requireAuth,userController.getUserProfile)
 
 export default userRouter;
