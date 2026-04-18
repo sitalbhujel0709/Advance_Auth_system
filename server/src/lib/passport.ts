@@ -3,12 +3,23 @@ import passport from "passport";
 import { Strategy } from "passport-google-oauth20";
 import { prisma } from './prisma.js';
 
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+const callbackBaseUrl =
+  process.env.SERVER_URL ?? `http://localhost:${process.env.PORT ?? "5000"}`;
+const googleCallbackUrl =
+  process.env.GOOGLE_CALLBACK_URL ?? `${callbackBaseUrl}/api/auth/google/callback`;
+
+if (!googleClientId || !googleClientSecret) {
+  throw new Error("Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET in environment variables");
+}
+
 passport.use(
   new Strategy(
     {
-      clientID: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      callbackURL: "/api/auth/google/callback"
+      clientID: googleClientId,
+      clientSecret: googleClientSecret,
+      callbackURL: googleCallbackUrl
     },
     async (accessToken, refreshToken, profile, done) => {
       try {

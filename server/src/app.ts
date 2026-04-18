@@ -1,10 +1,16 @@
+import 'dotenv/config';
 import express from 'express';
 import type {Express} from 'express';
 import cookieParser from 'cookie-parser';
+import cors from 'cors';
 import router from './route.js';
 import passport from "./lib/passport.js"
 
 const app:Express = express();
+app.use(cors({
+  origin: process.env.CLIENT_URL,
+  credentials: true
+}));
 
 app.use(express.json());
 app.use(cookieParser())
