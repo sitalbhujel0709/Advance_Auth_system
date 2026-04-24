@@ -8,13 +8,18 @@ import { UserSchema } from '@/Types/user.schema'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { apiInstance } from '@/lib/config/axios'
+import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
 
 type SignupFormInput = z.input<typeof UserSchema>
 type SignupFormOutput = z.output<typeof UserSchema>
 const SignupForm = () => {
+  const router = useRouter()
   const {
     register,
     handleSubmit,
+    reset,
     formState: {errors, isSubmitting},
   } = useForm<SignupFormInput, unknown, SignupFormOutput>({
     resolver: zodResolver(UserSchema),
@@ -27,6 +32,18 @@ const SignupForm = () => {
 
   const onSubmit = async (data: SignupFormOutput) => {
     console.log(data)
+    try {
+      const response = await apiInstance.post('/users/register',data);
+      if(response.status === 201){
+        console.log('User created successfully')
+        toast.success('Account created. Verify your email to continue.')
+        reset();
+        router.push(`/verify-email?email=${encodeURIComponent(data.email)}`)
+      }
+    } catch (error) {
+      console.error('Error creating user:', error)
+      toast.error('Error creating user')
+    }
   }
 
   return (

@@ -1,7 +1,10 @@
-import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import LogoutButton from "@/components/web/logut-button";
 
 export default function Home() {
   return (
-    <h1>hello world</h1>
+    <div>
+      <LogoutButton/>
+    </div>
   );
 }
